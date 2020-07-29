@@ -5,6 +5,6 @@ int main()
 {
 	Compiler c;
 	c.loadData("config.txt", "test.txt");
-	c.compile();
+	//c.compile();
 	return 0;
 }
