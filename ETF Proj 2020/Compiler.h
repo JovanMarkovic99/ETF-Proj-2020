@@ -1,7 +1,10 @@
 #pragma once
+#include <iostream> // del
 #include <vector>
+#include <stack>
 #include <fstream>
 #include <string>
+#include "Operation.h"
 
 class Compiler
 {
@@ -78,13 +81,92 @@ public:
 		// ------------ Read test
 	}
 
-	void compile();
+	void compile()
+	{
+		std::vector<std::string> output;
+
+		// Create postfix expressions ------------
+
+		for (size_t i = 0; i < m_input.size(); ++i)
+		{
+			std::string expression = m_input[i].substr(m_input[i].find("=") + 1,
+				m_input[i].length() - m_input[i].find("=") - 1);
+
+			std::string postfix_expr;
+			std::string var_or_num;
+			std::stack<Operation*> operation_stack;
+
+			for (size_t j = 0; j < expression.length(); ++j)
+				if (!isOperation(expression[j]))
+					var_or_num.append(1, expression[j]);
+				else
+				{
+					postfix_expr.append(var_or_num);
+					var_or_num.clear();
+
+					Operation* op = getOperation(expression[j]);
+					// (there is a operator at the top of the operator stack)
+					// and ((the operator at the top of the operator stack has greater precedence)
+					// or (the operator at the top of the operator stack has equal precedence and the token is left associative))
+					while (!operation_stack.empty() && (operation_stack.top()->priority() > op->priority() ||
+						(operation_stack.top()->priority() == op->priority() && operation_stack.top()->label() != '^')))
+					{
+						Operation* op2 = operation_stack.top();
+						operation_stack.pop();
+						postfix_expr.append(1, op2->label());
+						delete op2;
+					}
+					operation_stack.push(op);
+				}
+
+			postfix_expr.append(var_or_num);
+
+			while (!operation_stack.empty())
+			{
+				Operation* op = operation_stack.top();
+				operation_stack.pop();
+				postfix_expr.append(1, op->label());
+				delete op;
+			}
+
+			output.push_back(postfix_expr);
+		}
+
+		// -------------- Create postfix expressions
+	}
 
 private:
 	bool m_simple_compilation;
 	size_t m_time_equals, m_time_add, m_time_multiply, m_time_power, m_num_parallel;
 
 	std::vector<std::string> m_input;
+
+	static bool isOperation(char c)
+	{
+		return c == '*' || c == '^' || c == '+';
+	}
+
+	static Operation* getOperation(char c)
+	{
+		if (!isOperation(c))
+			return nullptr;
+
+		switch (c)
+		{
+		case '*':
+			return new Multiply();
+			break;
+		case '^':
+			return new Power();
+			break;
+		case '+':
+			return new Add();
+			break;
+		default:
+			return nullptr;
+			break;
+		}
+	}
 };
 
 const std::string Compiler::LABEL_TIME_EQUALS = "Tw";
