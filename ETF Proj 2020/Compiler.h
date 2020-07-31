@@ -142,7 +142,6 @@ public:
 		{
 
 			std::stack<NodeType*> stack;
-			NodeType* t, * t1, * t2;
 
 			for (size_t j = 0; j < output[i].length(); ++j)
 				if (!isOperation(output[i][j]))
@@ -151,17 +150,15 @@ public:
 					value.push_back(output[i][j++]);
 					while (output[i][j] != ' ')
 						value.push_back(output[i][j++]);
-					t = NodeType::newNode(value);
-					stack.push(t);
+					stack.push(NodeType::newNode(value));
 				}
 				else
 				{
-					t = NodeType::newNode(output[i][j]);
-					t1 = stack.top();
+					NodeType* t = NodeType::newNode(output[i][j]);
+					t->m_right = stack.top();
 					stack.pop();
-					t2 = stack.top();
-					t->m_right = t1;
-					t->m_left = t2;
+					t->m_left = stack.top();
+					stack.pop();
 					stack.push(t);
 				}
 
