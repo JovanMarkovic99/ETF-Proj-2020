@@ -1,22 +1,14 @@
 #pragma once
-#include <iostream> // del
 #include <vector>
 #include <stack>
 #include <fstream>
 #include <string>
-#include "Operation.h"
+#include "utility.h"
+
+using namespace util;
 
 class Compiler
 {
-private:
-
-	static const std::string LABEL_TIME_EQUALS;
-	static const std::string LABEL_TIME_ADD;
-	static const std::string LABEL_TIME_MULTIPLY;
-	static const std::string LABEL_TIME_POWER;
-	static const std::string LABEL_NUM_PARALLEL;
-	static const std::string LABEL_COMPILATION;
-
 public:
 	Compiler() {}
 	~Compiler() {}
@@ -83,7 +75,7 @@ public:
 
 	void compile()
 	{
-		std::vector<std::string> output;
+		std::vector<std::string> output(m_input.size());
 
 		// Create postfix expressions ------------
 
@@ -98,11 +90,15 @@ public:
 
 			for (size_t j = 0; j < expression.length(); ++j)
 				if (!isOperation(expression[j]))
-					var_or_num.append(1, expression[j]);
+					var_or_num.push_back(expression[j]);
 				else
 				{
-					postfix_expr.append(var_or_num);
-					var_or_num.clear();
+					if (var_or_num.size() > 0)
+					{
+						var_or_num.push_back(' ');
+						postfix_expr.append(var_or_num);
+						var_or_num.clear();
+					}
 
 					Operation* op = getOperation(expression[j]);
 					// (there is a operator at the top of the operator stack)
@@ -119,7 +115,11 @@ public:
 					operation_stack.push(op);
 				}
 
-			postfix_expr.append(var_or_num);
+			if (var_or_num.size() > 0)
+			{
+				var_or_num.push_back(' ');
+				postfix_expr.append(var_or_num);
+			}
 
 			while (!operation_stack.empty())
 			{
@@ -129,10 +129,46 @@ public:
 				delete op;
 			}
 
-			output.push_back(postfix_expr);
+			output[i] = postfix_expr;
 		}
 
 		// -------------- Create postfix expressions
+
+		// Create trees-----------------------------
+
+		m_syntax_trees.clear();
+		m_syntax_trees.reserve(output.size());
+		for (size_t i = 0; i < output.size(); ++i)
+		{
+
+			std::stack<NodeType*> stack;
+			NodeType* t, * t1, * t2;
+
+			for (size_t j = 0; j < output[i].length(); ++j)
+				if (!isOperation(output[i][j]))
+				{
+					std::string value;
+					value.push_back(output[i][j++]);
+					while (output[i][j] != ' ')
+						value.push_back(output[i][j++]);
+					t = NodeType::newNode(value);
+					stack.push(t);
+				}
+				else
+				{
+					t = NodeType::newNode(output[i][j]);
+					t1 = stack.top();
+					stack.pop();
+					t2 = stack.top();
+					t->m_right = t1;
+					t->m_left = t2;
+					stack.push(t);
+				}
+
+			m_syntax_trees.push_back(stack.top());
+		}
+
+		// ---------------------------- Create trees
 	}
 
 private:
@@ -140,33 +176,14 @@ private:
 	size_t m_time_equals, m_time_add, m_time_multiply, m_time_power, m_num_parallel;
 
 	std::vector<std::string> m_input;
+	std::vector<NodeType*> m_syntax_trees;
 
-	static bool isOperation(char c)
-	{
-		return c == '*' || c == '^' || c == '+';
-	}
-
-	static Operation* getOperation(char c)
-	{
-		if (!isOperation(c))
-			return nullptr;
-
-		switch (c)
-		{
-		case '*':
-			return new Multiply();
-			break;
-		case '^':
-			return new Power();
-			break;
-		case '+':
-			return new Add();
-			break;
-		default:
-			return nullptr;
-			break;
-		}
-	}
+	static const std::string LABEL_TIME_EQUALS;
+	static const std::string LABEL_TIME_ADD;
+	static const std::string LABEL_TIME_MULTIPLY;
+	static const std::string LABEL_TIME_POWER;
+	static const std::string LABEL_NUM_PARALLEL;
+	static const std::string LABEL_COMPILATION;
 };
 
 const std::string Compiler::LABEL_TIME_EQUALS = "Tw";

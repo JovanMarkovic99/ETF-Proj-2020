@@ -140,7 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Compiler.h" />
-    <ClInclude Include="Operation.h" />
+    <ClInclude Include="utility.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source.cpp" />
