@@ -8,6 +8,7 @@ namespace util
 	public:
 		virtual int priority() = 0;
 		virtual char label() = 0;
+		virtual int evaluate(int, int) = 0;
 	};
 
 	template <char Label, int Priority>
@@ -16,6 +17,32 @@ namespace util
 	public:
 		int priority() override { return Priority; }
 		char label() override { return Label; }
+	};
+
+	// Adding operators ------------------
+
+	template <>
+	class Op<'+', 2> : public Operation
+	{
+		int priority() override { return 2; }
+		char label() override { return '+'; }
+		int evaluate(int a, int b) override { return a + b; }
+	};
+
+	template <>
+	class Op<'*', 3> : public Operation
+	{
+		int priority() override { return 3; }
+		char label() override { return '*'; }
+		int evaluate(int a, int b) override { return a * b; }
+	};
+
+	template <>
+	class Op<'^', 4> : public Operation
+	{
+		int priority() override { return 4; }
+		char label() override { return '^'; }
+		int evaluate(int a, int b) override { return pow(a, b); }
 	};
 
 	using Add = Op<'+', 2>;
@@ -48,6 +75,8 @@ namespace util
 			break;
 		}
 	}
+
+	// ------------------ Adding operators
 
 	class NodeType
 	{
