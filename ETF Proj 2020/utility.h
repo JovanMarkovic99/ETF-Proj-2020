@@ -53,7 +53,7 @@ namespace util
 	{
 	private:
 		// Disable constructor unless used within the class
-		NodeType() : m_value(nullptr) {}
+		NodeType() : m_value(nullptr), m_left(nullptr), m_right(nullptr) {}
 
 	public:
 		enum class Type { OPERATION, CONSTANT, VARIABLE };
