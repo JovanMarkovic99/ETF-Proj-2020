@@ -19,35 +19,23 @@ namespace util
 		char label() override { return Label; }
 	};
 
+	template <char Label, int Priority>
+	class OpEval;
+
 	// Adding operators ------------------
 
-	template <>
-	class Op<'+', 2> : public Operation
-	{
-		int priority() override { return 2; }
-		char label() override { return '+'; }
-		int evaluate(int a, int b) override { return a + b; }
-	};
+#define CREATE_OPERATOR(sign, priority, tag, code)					\
+	template<>														\
+	class OpEval<sign, priority>: public Op<sign, priority>			\
+	{																\
+		int evaluate(int a, int b) override { return code; }		\
+	};																\
+	using tag = OpEval<sign, priority>;
 
-	template <>
-	class Op<'*', 3> : public Operation
-	{
-		int priority() override { return 3; }
-		char label() override { return '*'; }
-		int evaluate(int a, int b) override { return a * b; }
-	};
 
-	template <>
-	class Op<'^', 4> : public Operation
-	{
-		int priority() override { return 4; }
-		char label() override { return '^'; }
-		int evaluate(int a, int b) override { return pow(a, b); }
-	};
-
-	using Add = Op<'+', 2>;
-	using Multiply = Op<'*', 3>;
-	using Power = Op<'^', 4>;
+	CREATE_OPERATOR('+', 2, Add, (a + b))
+	CREATE_OPERATOR('*', 3, Multiply, (a * b))
+	CREATE_OPERATOR('^', 4, Power, (pow(a, b)))
 
 	constexpr bool isOperation(char c)
 	{
