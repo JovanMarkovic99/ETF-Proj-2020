@@ -8,6 +8,8 @@
 
 using namespace util;
 
+class Machine;
+
 class Compiler
 {
 public:
@@ -83,6 +85,8 @@ public:
 		createIMFFile();
 		deleteSyntaxTrees();
 	}
+
+	friend class Machine;
 
 private:
 	bool m_simple_compilation;
@@ -214,7 +218,6 @@ private:
 				std::stack<std::pair<size_t, NodeType*>>  node_stack;
 				imf_stack.push(" = " + getVariableOnLine(i) + " t" + std::to_string(token_num));
 				node_stack.emplace(token_num++, m_syntax_trees[i]);
-
 				while (!node_stack.empty())
 				{
 					size_t token;
@@ -265,6 +268,7 @@ private:
 			while (!stack.empty())
 			{
 				auto node = stack.top();
+				stack.pop();
 				if (node->m_left != nullptr)
 				{
 					stack.push(node->m_left);
@@ -273,6 +277,7 @@ private:
 				delete node;
 			}
 		}
+		m_syntax_trees.clear();
 	}
 
 	std::string getVariableOnLine(size_t line_num) const { return m_input[line_num].substr(0, m_input[line_num].find("=")); }

@@ -140,6 +140,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Compiler.h" />
+    <ClInclude Include="Machine.h" />
+    <ClInclude Include="Memory.h" />
     <ClInclude Include="utility.h" />
   </ItemGroup>
   <ItemGroup>

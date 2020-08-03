@@ -8,7 +8,7 @@ namespace util
 	public:
 		virtual int priority() = 0;
 		virtual char label() = 0;
-		virtual int evaluate(int, int) = 0;
+		virtual double evaluate(double, double) = 0;
 	};
 
 	template <char Label, int Priority>
@@ -24,18 +24,21 @@ namespace util
 
 	// Adding operators ------------------
 
-#define CREATE_OPERATOR(sign, priority, tag, code)					\
-	template<>														\
-	class OpEval<sign, priority>: public Op<sign, priority>			\
-	{																\
-		int evaluate(int a, int b) override { return code; }		\
-	};																\
+#define CREATE_OPERATOR(sign, priority, tag, code)						\
+	template<>															\
+	class OpEval<sign, priority>: public Op<sign, priority>				\
+	{																	\
+		double evaluate(double a, double b) override { return code; }	\
+	};																	\
 	using tag = OpEval<sign, priority>;
 
 
 	CREATE_OPERATOR('+', 2, Add, (a + b))
 	CREATE_OPERATOR('*', 3, Multiply, (a * b))
 	CREATE_OPERATOR('^', 4, Power, (pow(a, b)))
+	
+	//CREATE_OPERATOR('|', 4, Devide, (func(a, b)))
+	//int func(int a, int b) { ...; return ...; }
 
 	constexpr bool isOperation(char c)
 	{
