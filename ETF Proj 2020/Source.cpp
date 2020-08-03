@@ -7,7 +7,7 @@ int main()
 	Compiler c;
 	c.loadData("config.txt", "test.txt");
 	c.compile();
-	Machine m(c);
+	Machine m(&c);
 	m.exec("test.imf");
 	return 0;
 }

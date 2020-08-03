@@ -1,0 +1,6 @@
+Ta = 5
+Tm = 10
+Te = 20
+Tw = 40
+Nw = 2
+compilation = simple

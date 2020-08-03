@@ -14,6 +14,8 @@ class Compiler
 {
 public:
 	Compiler() {}
+	Compiler(const Compiler&) = delete;
+	Compiler& operator=(const Compiler&) = delete;
 	~Compiler() {}
 
 	void loadData(std::string config_path, std::string test_path)
@@ -26,15 +28,12 @@ public:
 		std::string line;
 		while (std::getline(f_config, line))
 		{
-			// Remove whitespaces
-			size_t i = 0;
-			while ((i = line.find(' ', i)) != std::string::npos)
-				line.erase(i, 1);
+			removeWhitespaces(line);
 
 			// Parse first word
-			std::string label = line.substr(0, line.find("="));
+			std::string label = line.substr(0, line.find('='));
 			// Parse second word
-			std::string result = line.substr(line.find("=") + 1, line.length() - line.find("=") - 1);
+			std::string result = line.substr(line.find('=') + 1, line.length() - line.find('=') - 1);
 
 			// e.g. compilation = simple => label = compilation; result = simple
 
@@ -66,11 +65,7 @@ public:
 		m_input.clear();
 		while (std::getline(f_test, line))
 		{
-			// Remove whitespaces
-			size_t i = 0;
-			while ((i = line.find(' ', i)) != std::string::npos)
-				line.erase(i, 1);
-
+			removeWhitespaces(line);
 			m_input.push_back(line);
 		}
 		f_test.close();
@@ -113,8 +108,8 @@ private:
 
 		for (size_t i = 0; i < m_input.size(); ++i)
 		{
-			std::string expression = m_input[i].substr(m_input[i].find("=") + 1,
-				m_input[i].length() - m_input[i].find("=") - 1);
+			std::string expression = m_input[i].substr(m_input[i].find('=') + 1,
+				m_input[i].length() - m_input[i].find('=') - 1);
 
 			std::string postfix_expr;
 			std::string var_or_num;
@@ -125,6 +120,7 @@ private:
 					var_or_num.push_back(expression[j]);
 				else
 				{
+					// Push variable or constant with space as the terminating character
 					if (var_or_num.size() > 0)
 					{
 						var_or_num.push_back(' ');
@@ -133,17 +129,20 @@ private:
 					}
 
 					Operation* op = getOperation(expression[j]);
+
 					// (there is a operator at the top of the operator stack)
 					// and ((the operator at the top of the operator stack has greater precedence)
 					// or (the operator at the top of the operator stack has equal precedence and the token is left associative))
 					while (!operation_stack.empty() && (operation_stack.top()->priority() > op->priority() ||
 						(operation_stack.top()->priority() == op->priority() && operation_stack.top()->label() != '^')))
 					{
+						// Get the operation from the top of the stack and push it to the postfix expression
 						Operation* op2 = operation_stack.top();
 						operation_stack.pop();
-						postfix_expr.append(1, op2->label());
+						postfix_expr.push_back(op2->label());
 						delete op2;
 					}
+
 					operation_stack.push(op);
 				}
 
@@ -178,6 +177,7 @@ private:
 			for (size_t j = 0; j < postfix_expressions[i].length(); ++j)
 				if (!isOperation(postfix_expressions[i][j]))
 				{
+					// Grab variable or constant
 					std::string value;
 					value.push_back(postfix_expressions[i][j++]);
 					while (postfix_expressions[i][j] != ' ')
@@ -186,6 +186,7 @@ private:
 				}
 				else
 				{
+					// Grab operation
 					NodeType* t = NodeType::newNode(postfix_expressions[i][j]);
 					t->m_right = stack.top();
 					stack.pop();
@@ -194,44 +195,57 @@ private:
 					stack.push(t);
 				}
 
+			// Push the root of the tree to the vector
 			m_syntax_trees.push_back(stack.top());
 		}
 	}
 
 	void createIMFFile() const
 	{
-		size_t line_num = 0;
+		size_t line_num = 1;
 		size_t token_num = 1;
 		std::ofstream imf_file(m_test_path.substr(0, m_test_path.find(".")) + ".imf");
+
 		for (size_t i = 0; i < m_syntax_trees.size(); ++i)
 		{
 			if (m_syntax_trees[i]->m_type != NodeType::Type::OPERATION)
 			{
-				imf_file << '[' << line_num << "] = " << getVariableOnLine(i) << " "
+				// Parse pure variable/constant asignment
+				imf_file << '[' << line_num << "] = " << getOutputVariable(i) << " "
 					<< *reinterpret_cast<std::string*>(m_syntax_trees[i]->m_value) << std::endl;
 				++line_num;
 			}
 			else
 			{
+				// Parse expression
+
+				// Stack of instruction for the expression
 				std::stack<std::string> imf_stack;
-				// Pair of token numbers and their appropriate nodes
+
+				// Pair of token numbers and their appropriate operation nodes
 				std::stack<std::pair<size_t, NodeType*>>  node_stack;
-				imf_stack.push(" = " + getVariableOnLine(i) + " t" + std::to_string(token_num));
+
+				// Push last instruction (token numbers are reversed in each expression)
+				imf_stack.push(" = " + getOutputVariable(i) + " t" + std::to_string(token_num));
 				node_stack.emplace(token_num++, m_syntax_trees[i]);
+
 				while (!node_stack.empty())
 				{
-					size_t token;
+					size_t token_num_current;
 					NodeType* node;
-					std::tie(token, node) = node_stack.top();
+					std::tie(token_num_current, node) = node_stack.top();
 					node_stack.pop();
+
 					// str = " * tn " || " + tn " || " ^ tn "
-					std::string str = " " + std::string(1, reinterpret_cast<Operation*>(node->m_value)->label()) + " t" + std::to_string(token) + " ";
+					std::string str = " " + std::string(1, reinterpret_cast<Operation*>(node->m_value)->label()) + " t" + std::to_string(token_num_current) + " ";
 
 					// Check left
 					if (node->m_left->m_type != NodeType::Type::OPERATION)
+						// Variable/const
 						str.append(*reinterpret_cast<std::string*>(node->m_left->m_value) + " ");
 					else
 					{
+						// Operation; give the operation a token number and put it on the stack
 						str.append("t" + std::to_string(token_num) + " ");
 						node_stack.emplace(token_num++ , node->m_left);
 					}
@@ -280,7 +294,14 @@ private:
 		m_syntax_trees.clear();
 	}
 
-	std::string getVariableOnLine(size_t line_num) const { return m_input[line_num].substr(0, m_input[line_num].find("=")); }
+	std::string getOutputVariable(size_t line_num) const { return m_input[line_num].substr(0, m_input[line_num].find('=')); }
+
+	static void removeWhitespaces(std::string& str)
+	{
+		size_t i = 0;
+		while ((i = str.find(' ', i)) != std::string::npos)
+			str.erase(i, 1);
+	}
 };
 
 const std::string Compiler::LABEL_TIME_EQUALS = "Tw";
