@@ -1,6 +1,5 @@
 #include "Compiler.h"
 #include "Machine.h"
-#include <iostream>
 
 int main()
 {
