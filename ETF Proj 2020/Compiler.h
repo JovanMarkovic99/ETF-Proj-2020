@@ -77,6 +77,10 @@ public:
 	{
 		auto output = inputToPostfix();
 		createSyntaxTrees(output);
+		if (!m_simple_compilation)
+		{
+			optimizeSequentialOperations();
+		}
 		createIMFFile();
 		deleteSyntaxTrees();
 	}
@@ -292,6 +296,53 @@ private:
 			}
 		}
 		m_syntax_trees.clear();
+	}
+
+	// Optimize two operations that are done sequentialy two times on variable/constants e.g. + t1 a tn; + t2 t1 b -> + t1 a b; + t2 t1 tn
+	void optimizeSequentialOperations()
+	{
+		for (size_t i = 0; i < m_syntax_trees.size(); ++i)
+		{
+			std::stack<NodeType*> stack;
+			
+			if (m_syntax_trees[i]->m_type == NodeType::Type::OPERATION)
+				stack.push(m_syntax_trees[i]);
+
+			while (!stack.empty())
+			{
+				auto node = stack.top();
+				stack.pop();
+
+				// Operation at node
+				auto op = reinterpret_cast<Operation*>(node->m_value)->label();
+				
+				// Left check
+				if (node->m_left->m_type == NodeType::Type::OPERATION &&
+					reinterpret_cast<Operation*>(node->m_left->m_value)->label() == op
+					&& node->m_right->m_type != NodeType::Type::OPERATION)
+				{
+					if (node->m_left->m_right->m_type == NodeType::Type::OPERATION && node->m_left->m_left->m_type != NodeType::Type::OPERATION)
+						std::swap(node->m_right, node->m_left->m_right);
+					else if (node->m_left->m_left->m_type == NodeType::Type::OPERATION && node->m_left->m_right->m_type != NodeType::Type::OPERATION)
+						std::swap(node->m_right, node->m_left->m_left);
+				}
+				// Right check
+				else if (node->m_right->m_type == NodeType::Type::OPERATION &&
+					reinterpret_cast<Operation*>(node->m_right->m_value)->label() == op
+					&& node->m_left->m_type != NodeType::Type::OPERATION)
+				{
+					if (node->m_right->m_right->m_type == NodeType::Type::OPERATION && node->m_right->m_left->m_type != NodeType::Type::OPERATION)
+						std::swap(node->m_left, node->m_right->m_right);
+					else if (node->m_right->m_left->m_type == NodeType::Type::OPERATION && node->m_right->m_right->m_type != NodeType::Type::OPERATION)
+						std::swap(node->m_left, node->m_right->m_left);
+				}
+
+				if (node->m_left->m_type == NodeType::Type::OPERATION)
+					stack.push(node->m_left);
+				if (node->m_right->m_type == NodeType::Type::OPERATION)
+					stack.push(node->m_right);
+			}
+		}
 	}
 
 	std::string getOutputVariable(size_t line_num) const { return m_input[line_num].substr(0, m_input[line_num].find('=')); }

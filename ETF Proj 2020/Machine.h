@@ -8,6 +8,11 @@ class Machine
 {
 public:
 	Machine(const Compiler* c) : m_compiler(c) {}
+	Machine(const Machine&) = default;
+	Machine(Machine&&) = default;
+	Machine& operator=(const Machine&) = default;
+	Machine& operator=(Machine&&) = default;
+	~Machine() {}
 
 	void exec(std::string test_path)
 	{

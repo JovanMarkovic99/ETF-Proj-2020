@@ -5,6 +5,10 @@ class Memory
 {
 public:
 	Memory() {}
+	Memory(const Memory&) = default;
+	Memory(Memory&&) = default;
+	Memory& operator=(const Memory&) = default;
+	Memory& operator=(Memory&&) = default;
 	~Memory() {}
 
 	void set(std::string var_name, double val)
