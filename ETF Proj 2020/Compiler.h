@@ -80,6 +80,7 @@ public:
 		if (!m_simple_compilation)
 		{
 			optimizeSequentialOperations();
+			optimizeTimeZeroOperations();
 		}
 		createIMFFile();
 		deleteSyntaxTrees();
@@ -341,6 +342,117 @@ private:
 					stack.push(node->m_left);
 				if (node->m_right->m_type == NodeType::Type::OPERATION)
 					stack.push(node->m_right);
+			}
+		}
+	}
+
+	// Swap variable operands with constant operands so that there are as much time zero operations,
+	// i.e. operations that have constants as operands (operations that can run from 0ns)
+	void optimizeTimeZeroOperations()
+	{
+		for (size_t i = 0; i < m_syntax_trees.size(); ++i)
+		{
+			std::stack<NodeType*> discovery_stack;
+			if (m_syntax_trees[i]->m_type == NodeType::Type::OPERATION)
+				discovery_stack.push(m_syntax_trees[i]);
+
+			while (!discovery_stack.empty())
+			{
+				// free_constants = constants who's sibling is an operation, i.e. constants that can be freely swapped
+				std::stack<std::reference_wrapper<NodeType*>> free_constants;
+				
+				// two_variable_pair = variable who's sibling is a variable, i.e. both need to be swapped
+				// var_const_pair = variable who's sibling is a constant, i.e. one of them needs to be swapped
+				std::stack<std::pair<std::reference_wrapper<NodeType*>, std::reference_wrapper<NodeType*>>> two_variable_pair, var_const_pair;
+
+				// Explore tree for the node --------------------------------
+
+				std::stack<NodeType*> stack;
+				stack.push(discovery_stack.top());
+				discovery_stack.pop();
+				while (!stack.empty())
+				{
+					auto node = stack.top();
+					stack.pop();
+
+					auto op = reinterpret_cast<Operation*>(node->m_value)->label();
+
+					// Check left
+					if (node->m_left->m_type == NodeType::Type::OPERATION)
+					{
+						if (reinterpret_cast<Operation*>(node->m_left->m_value)->label() == op)
+							stack.push(node->m_left);
+						else
+							discovery_stack.push(node->m_left);
+					}
+
+					else if (node->m_left->m_type == NodeType::Type::CONSTANT)
+					{
+						// Free constant
+						if (node->m_right->m_type == NodeType::Type::OPERATION)
+							free_constants.push(node->m_left);
+						
+						// Variable constant pair
+						else if (node->m_right->m_type == NodeType::Type::VARIABLE)
+							var_const_pair.push({ node->m_right, node->m_left } );
+					}
+					
+					// Two variable pair
+					else if (node->m_left->m_type == NodeType::Type::VARIABLE && node->m_right->m_type == NodeType::Type::VARIABLE)
+						two_variable_pair.push({ node->m_left, node->m_right });
+
+					// Check right
+					if (node->m_right->m_type == NodeType::Type::OPERATION)
+					{
+						if (reinterpret_cast<Operation*>(node->m_right->m_value)->label() == op)
+							stack.push(node->m_right);
+						else
+							discovery_stack.push(node->m_right);
+					}
+
+					else if (node->m_right->m_type == NodeType::Type::CONSTANT)
+					{
+						// Free constant
+						if (node->m_left->m_type == NodeType::Type::OPERATION)
+							free_constants.push(node->m_right);
+
+						// Variable constant pair
+						else if (node->m_left->m_type == NodeType::Type::VARIABLE)
+							var_const_pair.push({ node->m_left, node->m_right });
+					}
+				}
+
+				// --------------------------------- Explore tree for the node
+
+				// Swap two free constants with a variable pair
+				while (!two_variable_pair.empty() && free_constants.size() > 1)
+				{
+					auto& c1 = free_constants.top().get();
+					free_constants.pop();
+					auto& c2 = free_constants.top().get();
+					free_constants.pop();
+					std::swap(two_variable_pair.top().first.get(), c1);
+					std::swap(two_variable_pair.top().second.get(), c2);
+					two_variable_pair.pop();
+				}
+
+				// Swap variables and free constants
+				while (!var_const_pair.empty() && !free_constants.empty())
+				{
+					std::swap(var_const_pair.top().first.get(), free_constants.top().get());
+					var_const_pair.pop();
+					free_constants.pop();
+				}
+
+				// Swap variables and constants from the pairs
+				while (var_const_pair.size() > 1)
+				{
+					auto& v1 = var_const_pair.top().first.get();
+					var_const_pair.pop();
+					std::swap(v1, var_const_pair.top().second.get());
+					var_const_pair.pop();
+				}
+				
 			}
 		}
 	}

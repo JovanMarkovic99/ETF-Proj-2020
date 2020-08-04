@@ -3,8 +3,7 @@
 
 int main()
 {
-	auto a = 1, b = 2;
-
+	
 	Compiler c;
 	c.loadData("config.txt", "test.txt");
 	c.compile();
