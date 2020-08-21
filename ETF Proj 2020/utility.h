@@ -36,13 +36,15 @@ namespace util
 	CREATE_OPERATOR('+', 2, Add, (a + b))
 	CREATE_OPERATOR('*', 3, Multiply, (a * b))
 	CREATE_OPERATOR('^', 4, Power, (pow(a, b)))
+	CREATE_OPERATOR('(', 1, LeftParenthesis, 0)
+	CREATE_OPERATOR(')', 1, RightParenthesis, 0)
 	
 	//CREATE_OPERATOR('|', 4, Devide, (func(a, b)))
 	//int func(int a, int b) { ...; return ...; }
 
 	constexpr bool isOperation(char c)
 	{
-		return c == '*' || c == '^' || c == '+';
+		return c == '*' || c == '^' || c == '+' || c == '(' || c == ')';
 	}
 
 	constexpr Operation* getOperation(char c)
@@ -60,6 +62,12 @@ namespace util
 			break;
 		case '+':
 			return new Add();
+			break;
+		case '(':
+			return new LeftParenthesis();
+			break;
+		case ')':
+			return new RightParenthesis();
 			break;
 		default:
 			return nullptr;

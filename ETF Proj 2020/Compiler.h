@@ -118,6 +118,7 @@ private:
 
 			std::string postfix_expr;
 			std::string var_or_num;
+			
 			std::stack<Operation*> operation_stack;
 
 			for (size_t j = 0; j < expression.length(); ++j)
@@ -135,20 +136,45 @@ private:
 
 					Operation* op = getOperation(expression[j]);
 
-					// (there is a operator at the top of the operator stack)
-					// and ((the operator at the top of the operator stack has greater precedence)
-					// or (the operator at the top of the operator stack has equal precedence and the token is left associative))
-					while (!operation_stack.empty() && (operation_stack.top()->priority() > op->priority() ||
-						(operation_stack.top()->priority() == op->priority() && operation_stack.top()->label() != '^')))
+					// Left parenthesis
+					if (expression[j] == '(')
+						operation_stack.push(getOperation(expression[j]));
+
+					// Right parenthesis
+					else if (expression[j] == ')')
 					{
-						// Get the operation from the top of the stack and push it to the postfix expression
-						Operation* op2 = operation_stack.top();
+						while (operation_stack.top()->label() != '(')
+						{
+							Operation* op2 = operation_stack.top();
+							operation_stack.pop();
+							postfix_expr.push_back(op2->label());
+							delete op2;
+						}
+
+						// Delete left parenthesis; Warrning not checking for parenthesis missmatch
+						delete operation_stack.top();
 						operation_stack.pop();
-						postfix_expr.push_back(op2->label());
-						delete op2;
 					}
 
-					operation_stack.push(op);
+					else
+					{
+
+						// ((there is a operator at the top of the operator stack)
+						// and (the operator at the top of the operator stack is not a left parenthesis)
+						// and ((the operator at the top of the operator stack has greater precedence)
+						// or (the operator at the top of the operator stack has equal precedence and the token is left associative)))
+						while (!operation_stack.empty() && operation_stack.top()->label() != '(' 
+							&& (operation_stack.top()->priority() > op->priority() || (operation_stack.top()->priority() == op->priority() 
+								&& operation_stack.top()->label() != '^')))
+						{
+							// Get the operation from the top of the stack and push it to the postfix expression
+							Operation* op2 = operation_stack.top();
+							operation_stack.pop();
+							postfix_expr.push_back(op2->label());
+							delete op2;
+						}
+						operation_stack.push(op);
+					}
 				}
 
 			if (var_or_num.size() > 0)
@@ -455,7 +481,7 @@ private:
 				
 			}
 		}
-	}
+	} 
 
 	std::string getOutputVariable(size_t line_num) const { return m_input[line_num].substr(0, m_input[line_num].find('=')); }
 
